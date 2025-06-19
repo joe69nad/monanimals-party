@@ -1,0 +1,126 @@
+html,
+body {
+  max-height: 100vh;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  margin: 0;
+  background: #666;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+canvas {
+  background: #000;
+  object-fit: contain;
+  width: 100vh;
+  height: 100vh;
+  background-image: url('img/game-background.png');
+  background-size: cover; /* or 'contain' if you want the whole image visible */
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+#launch-screen {
+  position: fixed;
+  z-index: 10;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.92);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+#banner-img {
+  max-width: 120vw;
+  max-height: 60vh;
+  margin-bottom: 32px;
+  border-radius: 12px;
+  box-shadow: 0 4px 32px #000a;
+}
+
+#launch-form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+#player-name {
+  font-size: 1.2rem;
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: none;
+  outline: none;
+  width: 300px;
+  text-align: center;
+  font-family: 'Press Start 2P', monospace;
+}
+
+#start-btn {
+  font-size: 1.1rem;
+  padding: 10px 32px;
+  border-radius: 8px;
+  border: none;
+  background: #e91e63;
+  color: #fff;
+  font-family: 'Press Start 2P', monospace;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+#start-btn:hover {
+  background: #ad1457;
+}
+
+/* Mobile styles */
+@media (max-width: 700px) {
+  html,
+  body {
+    height: 100vh;
+    overflow: hidden; /* Prevent scrolling */
+  }
+  body {
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
+    max-height: 100vh;
+    overflow: hidden; /* Prevent scrolling */
+  }
+  canvas {
+    width: 100vw;
+    height: 100vw;
+    max-width: 100vw;
+    max-height: 100vw;
+    margin-top: 0;
+    margin-bottom: 24px;
+    display: block;
+  }
+  #launch-screen {
+    justify-content: flex-start;
+    padding-top: 32px;
+  }
+}
+
+#joystick {
+  position: absolute;
+  right: 50px;
+  bottom: 50px;
+  width: 120px;
+  height: 120px;
+  border: 3px solid #fff;
+  border-radius: 60px;
+  opacity: 0.5;
+}
+#knob {
+  position: absolute;
+  left: 20px;
+  top: 20px;
+  width: 80px;
+  height: 80px;
+  border-radius: 40px;
+  background-color: #fff;
+}

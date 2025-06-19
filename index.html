@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
+    />
+    <title>Monanimals Party</title>
+    <link rel="stylesheet" href="style.css" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div id="launch-screen">
+      <img src="img/banner.png" alt="Game Banner" id="banner-img" />
+      <div id="launch-form">
+        <input
+          id="player-name"
+          type="text"
+          placeholder="Enter your name"
+          maxlength="16"
+          autocomplete="off"
+        />
+        <button id="start-btn">Start</button>
+      </div>
+    </div>
+    <canvas id="canvas"></canvas>
+    <div id="joystick"><div id="knob"></div></div>
+    <audio id="fallsound" src="audio/fallsound.mp3" preload="auto"></audio>
+    <audio id="start-audio" src="audio/start-audio.mp3" preload="auto"></audio>
+    <audio
+      id="theme-song"
+      src="audio/theme-song.ogg"
+      preload="auto"
+      loop
+    ></audio>
+    <audio id="kick-sound" src="audio/kick.mp3" preload="auto"></audio>
+    <script type="module" src="main.js"></script>
+  </body>
+</html>
