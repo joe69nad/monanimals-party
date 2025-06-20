@@ -227,9 +227,9 @@ export class GameView extends Multisynq.View {
     let x = 0,
       y = 0,
       id = null,
-      right = false,
-      left = false,
-      forward = false
+      joystickInterval = null,
+      lastVector = { dx: 0, dy: 0 }
+
     document.onpointerdown = e => {
       if (id === null) {
         id = e.pointerId
@@ -238,71 +238,47 @@ export class GameView extends Multisynq.View {
         joystick.style.left = `${x - 60}px`
         joystick.style.top = `${y - 60}px`
         joystick.style.display = 'block'
+        // Start interval for continuous emission
+        joystickInterval = setInterval(() => {
+          if (lastVector.dx !== 0 || lastVector.dy !== 0) {
+            this.publish(this.viewId, 'joystick', lastVector)
+          }
+        }, 50) // 20 times per second
       }
     }
     document.onpointermove = e => {
-      e.preventDefault()
       if (id === e.pointerId) {
         let dx = e.clientX - x
         let dy = e.clientY - y
-        if (dx > 30) {
-          dx = 30
-          if (!right) {
-            this.publish(this.viewId, 'turn-right', true)
-            right = true
-          }
-        } else if (right) {
-          this.publish(this.viewId, 'turn-right', false)
-          right = false
+        const maxDist = 40
+        const dist = Math.sqrt(dx * dx + dy * dy)
+        let vx, vy
+        if (dist >= maxDist) {
+          vx = dx / dist
+          vy = dy / dist
+          dx = vx * maxDist
+          dy = vy * maxDist
+        } else {
+          vx = dx / maxDist
+          vy = dy / maxDist
         }
-        if (dx < -30) {
-          dx = -30
-          if (!left) {
-            this.publish(this.viewId, 'turn-left', true)
-            left = true
-          }
-        } else if (left) {
-          this.publish(this.viewId, 'turn-left', false)
-          left = false
-        }
-        if (dy < -30) {
-          dy = -30
-          if (!forward) {
-            this.publish(this.viewId, 'move-up', true)
-            forward = true
-          }
-        } else if (forward) {
-          this.publish(this.viewId, 'move-up', false)
-          forward = false
-        }
-        if (dy > 0) dy = 0
         knob.style.left = `${20 + dx}px`
         knob.style.top = `${20 + dy}px`
+        lastVector = { dx: vx, dy: vy }
+        this.publish(this.viewId, 'joystick', lastVector)
       }
     }
     document.onpointerup = e => {
-      e.preventDefault()
       if (id === e.pointerId) {
         id = null
-        // if (!right && !left && !forward) {
-        //   this.publish(this.viewId, 'fire-blaster')
-        // }
-        if (right) {
-          this.publish(this.viewId, 'turn-right', false)
-          right = false
-        }
-        if (left) {
-          this.publish(this.viewId, 'turn-left', false)
-          left = false
-        }
-        if (forward) {
-          this.publish(this.viewId, 'move-up', false)
-          forward = false
-        }
         knob.style.left = `20px`
         knob.style.top = `20px`
-      } else {
-        this.publish(this.viewId, 'fire-blaster')
+        lastVector = { dx: 0, dy: 0 }
+        // Stop interval
+        if (joystickInterval) clearInterval(joystickInterval)
+        joystickInterval = null
+        // Send zero vector when released
+        this.publish(this.viewId, 'joystick', lastVector)
       }
     }
   }
@@ -356,36 +332,23 @@ export class GameView extends Multisynq.View {
     }
 
     if (myPlayer && myPlayer.lost) {
-      // "You fell off" at the top
-      this.context.save()
-      this.context.font = '24px "Press Start 2P", monospace'
-      this.context.fillStyle = 'red'
-      this.context.textAlign = 'center'
-      this.context.shadowBlur = 8
-      this.context.shadowOffsetX = 2
-      this.context.shadowOffsetY = 2
-      this.context.fillText('You fell off', 500, 450)
-      // "Respawning..." in the centerd
-      this.context.font = '32px "Press Start 2P", monospace'
-      this.context.fillStyle = 'blue'
-      this.context.fillText('Respawning', 500, 500)
-      this.context.restore()
+      this.drawFallText()
     }
 
-    if (myPlayer) {
-      for (const [otherId, otherPlayer] of this.model.players.entries()) {
-        if (otherId !== this.viewId) {
-          this.context.save()
-          this.context.strokeStyle = 'rgba(0,0,255,0.5)'
-          this.context.lineWidth = 2
-          this.context.beginPath()
-          this.context.moveTo(myPlayer.x + 10, myPlayer.y + 10)
-          this.context.lineTo(otherPlayer.x + 10, otherPlayer.y + 10)
-          this.context.stroke()
-          this.context.restore()
-        }
-      }
-    }
+    // if (myPlayer) {
+    //   for (const [otherId, otherPlayer] of this.model.players.entries()) {
+    //     if (otherId !== this.viewId) {
+    //       this.context.save()
+    //       this.context.strokeStyle = 'rgba(0,0,255,0.5)'
+    //       this.context.lineWidth = 2
+    //       this.context.beginPath()
+    //       this.context.moveTo(myPlayer.x + 10, myPlayer.y + 10)
+    //       this.context.lineTo(otherPlayer.x + 10, otherPlayer.y + 10)
+    //       this.context.stroke()
+    //       this.context.restore()
+    //     }
+    //   }
+    // }
 
     for (const player of this.model.players.values()) {
       // Draw player
@@ -399,6 +362,22 @@ export class GameView extends Multisynq.View {
 
     // Draw other game elements like asteroids, blasts, etc.
     this.drawPlayerScore()
+  }
+
+  drawFallText() {
+    this.context.save()
+    this.context.font = '24px "Press Start 2P", monospace'
+    this.context.fillStyle = 'red'
+    this.context.textAlign = 'center'
+    this.context.shadowBlur = 8
+    this.context.shadowOffsetX = 2
+    this.context.shadowOffsetY = 2
+    this.context.fillText('You fell off', 500, 450)
+    // "Respawning..." in the centerd
+    this.context.font = '32px "Press Start 2P", monospace'
+    this.context.fillStyle = 'blue'
+    this.context.fillText('Respawning', 500, 500)
+    this.context.restore()
   }
 
   drawPlayerScore() {
@@ -441,7 +420,7 @@ export class GameView extends Multisynq.View {
       this.context.font = '12px "Press Start 2P", monospace'
       this.context.fillStyle = '#a259ff'
     } else {
-      this.context.font = '16px "Press Start 2P", monospace'
+      this.context.font = '12px "Press Start 2P", monospace'
       this.context.fillStyle = '#fff'
     }
     this.context.textAlign = 'center'
@@ -484,15 +463,6 @@ export class GameView extends Multisynq.View {
       this.context.restore()
     }
     drawIt(x, y)
-
-    // if (x - size < 0) drawIt(x + 1000, y)
-    // if (x + size > 1000) drawIt(x - 1000, y)
-    // if (y - size < 0) drawIt(x, y + 1000)
-    // if (y + size > 1000) drawIt(x, y - 1000)
-    // if (x - size < 0 && y - size < 0) drawIt(x + 1000, y + 1000)
-    // if (x + size > 1000 && y + size > 1000) drawIt(x - 1000, y - 1000)
-    // if (x - size < 0 && y + size > 1000) drawIt(x + 1000, y - 1000)
-    // if (x + size > 1000 && y - size < 0) drawIt(x - 1000, y + 1000)
   }
 
   virtualToScreen(x, y) {
