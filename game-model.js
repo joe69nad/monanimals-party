@@ -1,5 +1,6 @@
 import * as Multisynq from 'https://cdn.jsdelivr.net/npm/@multisynq/client@1.0.4/bundled/multisynq-client.esm.js'
 import { PlayerModel } from './player.js'
+import { POTION_TYPES } from './potion.js'
 
 // Virtual game world size (fixed for all devices)
 const GAME_WIDTH = 1000
@@ -9,7 +10,15 @@ export class GameModel extends Multisynq.Model {
   init(_, persisted) {
     this.players = new Map()
 
+    this.safeArea = {
+      x: GAME_WIDTH * 0.09,
+      y: GAME_HEIGHT * 0.11,
+      width: GAME_WIDTH * 0.82,
+      height: GAME_HEIGHT * 0.78,
+    }
+
     this.nameMap = persisted?.nameMap ?? {}
+    this.potions = []
 
     // Fix: Ensure scoreboard is always a Map
     if (persisted?.scoreboard instanceof Map) {
@@ -23,11 +32,11 @@ export class GameModel extends Multisynq.Model {
       this.scoreboard = new Map()
     }
 
+    this.potions = this.spawnPotions(3)
+
     this.subscribe(this.sessionId, 'view-join', this.viewJoined)
 
     this.subscribe(this.sessionId, 'view-exit', this.viewExited)
-
-    this.subscribe(this.sessionId, 'safe-area-set', sa => (this.safeArea = sa))
 
     this.subscribe(this.sessionId, 'set-name', this.setName)
 
@@ -36,14 +45,22 @@ export class GameModel extends Multisynq.Model {
 
   viewJoined(viewId) {
     const player = PlayerModel.create({ viewId })
+
+    // Assign a random image
+    const images = ['chog.svg', 'molandak.svg']
+    player.sprite = images[Math.floor(Math.random() * images.length)]
+
+    // Spawn at random position inside safe area
+    if (this.safeArea) {
+      player.x = this.safeArea.x + Math.random() * this.safeArea.width
+      player.y = this.safeArea.y + Math.random() * this.safeArea.height
+    } else {
+      // Fallback if safeArea not set yet
+      player.x = 100 + Math.random() * 800
+      player.y = 100 + Math.random() * 800
+    }
+
     this.players.set(viewId, player)
-
-    // if (viewId === this.viewId) {
-    //   console.log(`You joined the game as ${viewId}.`)
-
-    //   this.setName(viewId, window.playerName || viewId)
-    // }
-
     console.log(`Player ${viewId} joined the game.`)
   }
 
@@ -59,6 +76,7 @@ export class GameModel extends Multisynq.Model {
     for (const player of this.players.values()) {
       if (!player.lost) player.move()
     }
+    this.checkPotionCollisions()
     this.checkPlayerCollisions()
     this.checkPlayerBounds() // <-- Add this line
     this.future(50).mainLoop() // move & check every 50 msdd
@@ -140,8 +158,12 @@ export class GameModel extends Multisynq.Model {
 
           // Calculate push direction
           const angle = Math.atan2(dy, dx)
-          const pushStrength = 8
-          const popStrength = 3
+          let pushStrength = 5
+          let popStrength = 5
+
+          if (p1.activePotions.strength) {
+            popStrength = 10 // Stronger push for p1
+          }
 
           // Push both players away from each other
           p1.dx += Math.cos(angle) * pushStrength
@@ -151,12 +173,81 @@ export class GameModel extends Multisynq.Model {
           p2.dy -= Math.sin(angle) * popStrength
 
           // Slow down the player who pushed (p1)
-          if (typeof p1.slowDown === 'function') p1.slowDown()
+          //if (typeof p1.slowDown === 'function') p1.slowDown()
 
           // Track who pushed whom
           p2.lastPushedBy = p1.viewId
+          p1.lastPushedBy = p2.viewId
         }
       }
+    }
+  }
+
+  spawnPotions(count) {
+    const types = Object.keys(POTION_TYPES)
+    const potions = []
+    for (let i = 0; i < count; i++) {
+      const type = types[Math.floor(Math.random() * types.length)]
+      potions.push({
+        id: i,
+        type,
+        x: this.safeArea
+          ? this.safeArea.x + Math.random() * this.safeArea.width
+          : 100 + Math.random() * 800,
+        y: this.safeArea
+          ? this.safeArea.y + Math.random() * this.safeArea.height
+          : 100 + Math.random() * 800,
+        takenBy: null,
+        expiresAt: null,
+      })
+    }
+    return potions
+  }
+
+  checkPotionCollisions() {
+    for (const potion of this.potions) {
+      if (potion.takenBy) continue
+      for (const player of this.players.values()) {
+        if (player.lost) continue
+        const dx = player.x - potion.x
+        const dy = player.y - potion.y
+        const dist = Math.sqrt(dx * dx + dy * dy)
+        if (dist < 36 && !player.activePotions[potion.type]) {
+          // Collect potion
+          potion.takenBy = player.viewId
+          player.activePotions[potion.type] = true
+
+          // Schedule effect expiration
+          this.future(POTION_TYPES[potion.type].duration).expirePotion(
+            player,
+            potion.type,
+            potion.id
+          )
+        }
+      }
+    }
+  }
+
+  // Called by this.future(...) above
+  expirePotion(player, type, potionId) {
+    // Remove effect from player
+    if (player.activePotions[type]) {
+      delete player.activePotions[type]
+    }
+    // Respawn potion
+    const potion = this.potions.find(p => p.id === potionId)
+    if (potion) {
+      potion.x = this.safeArea
+        ? this.safeArea.x + Math.random() * this.safeArea.width
+        : 100 + Math.random() * 800
+      potion.y = this.safeArea
+        ? this.safeArea.y + Math.random() * this.safeArea.height
+        : 100 + Math.random() * 800
+      potion.takenBy = null
+      potion.type =
+        Object.keys(POTION_TYPES)[
+          Math.floor(Math.random() * Object.keys(POTION_TYPES).length)
+        ]
     }
   }
 }
@@ -166,16 +257,20 @@ GameModel.register('GameModel')
 export class GameView extends Multisynq.View {
   joystick = document.getElementById('joystick')
   knob = document.getElementById('knob')
+
   constructor(model) {
     super(model)
     this.model = model
     this.smoothing = new WeakMap()
-    this.prevLost = false // <-- Add this line
+    this.prevLost = false
 
     this.context = canvas.getContext('2d')
-    // Set canvas size to match the display size
     canvas.width = window.innerHeight
     canvas.height = window.innerHeight
+
+    // Load potion image once
+    this.potionImg = new Image()
+    this.potionImg.src = 'img/potion.svg'
 
     this.safeArea = {
       x: GAME_WIDTH * 0.09,
@@ -184,7 +279,7 @@ export class GameView extends Multisynq.View {
       height: GAME_HEIGHT * 0.78,
     }
 
-    this.publish(this.sessionId, 'safe-area-set', this.safeArea)
+    //this.publish(this.sessionId, 'safe-area-set', this.safeArea)
     this.publish(this.sessionId, 'set-name', {
       viewId: this.viewId,
       name: window.playerName,
@@ -315,6 +410,7 @@ export class GameView extends Multisynq.View {
     // Now draw in screen pixels
 
     // Now draw everything in virtual coordinates!
+    this.drawPotions()
     this.drawPlayArea()
 
     const myPlayer = this.model.players.get(this.viewId)
@@ -395,14 +491,58 @@ export class GameView extends Multisynq.View {
     this.context.restore()
   }
 
+  drawPotions() {
+    for (const potion of this.model.potions) {
+      if (potion.takenBy) continue
+
+      // Draw SVG image if loaded, else fallback to circle
+      if (this.potionImg.complete && this.potionImg.naturalWidth > 0) {
+        this.context.save()
+        this.context.translate(potion.x, potion.y)
+        this.context.drawImage(this.potionImg, -18, -18, 36, 36)
+        this.context.restore()
+      } else {
+        // Fallback: draw a colored circle
+        const color = POTION_TYPES[potion.type]?.color || '#fff'
+        this.context.save()
+        this.context.beginPath()
+        this.context.arc(potion.x, potion.y, 18, 0, 2 * Math.PI)
+        this.context.fillStyle = color
+        this.context.shadowColor = '#fff'
+        this.context.shadowBlur = 12
+        this.context.fill()
+        this.context.restore()
+      }
+    }
+  }
+
   drawPlayer(player) {
-    if (!this.playerImg) {
-      this.playerImg = new Image()
-      this.playerImg.src = 'img/chog.svg'
+    // Load and cache player image based on player.sprite
+    if (!player.sprite) player.sprite = 'chog.svg' // fallback
+
+    if (!this.playerImgs) this.playerImgs = {}
+    if (!this.playerImgs[player.sprite]) {
+      const img = new Image()
+      img.src = 'img/' + player.sprite
+      this.playerImgs[player.sprite] = img
+      // Wait for image to load before drawing
       return
     }
-    // Draw the player image (with rotation)
-    this.context.drawImage(this.playerImg, -24, -24, 64, 64)
+    const img = this.playerImgs[player.sprite]
+    if (img.complete && img.naturalWidth > 0) {
+      this.context.drawImage(img, -24, -24, 64, 64)
+    }
+
+    if (player.activePotions && player.activePotions.strength) {
+      this.context.save()
+      this.context.beginPath()
+      this.context.arc(8, -28, 10, 0, 2 * Math.PI)
+      this.context.fillStyle = '#a259ff' // purple
+      this.context.shadowColor = '#fff'
+      this.context.shadowBlur = 8
+      this.context.fill()
+      this.context.restore()
+    }
 
     // --- Draw name after restoring rotation ---
     this.context.save()

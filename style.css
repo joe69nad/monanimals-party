@@ -5,6 +5,14 @@ body {
   padding: 0;
 }
 
+/* Prevent selection and callout on joystick and knob */
+* {
+  -webkit-user-select: none; /* Safari */
+  user-select: none;
+  -webkit-touch-callout: none; /* Disable callout, Safari iOS */
+  -webkit-tap-highlight-color: transparent; /* Remove tap highlight */
+}
+
 body {
   margin: 0;
   background: #666;

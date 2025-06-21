@@ -9,11 +9,7 @@ export class PlayerModel extends GameObject {
     this.lost = false
     this.respawnTimer = 0
     this.joystickVector = { dx: 0, dy: 0 } // Add this line
-    // wherever you create/add a player
-    //this.name = viewId === this.viewId ? window.playerName : 'Player'
-    // if (viewId === this.viewId) {
-    //   this.game.setName(viewId, window.playerName || viewId)
-    // }
+    this.activePotions = {} // { type: true }
 
     this.subscribe(viewId, 'turn-left', this.turnLeft)
     this.subscribe(viewId, 'turn-right', this.turnRight)
@@ -52,9 +48,9 @@ export class PlayerModel extends GameObject {
     }
 
     // Keyboard controls
-    if (this.up) this.accelerate(0.6)
-    if (this.left) this.a -= 0.2
-    if (this.right) this.a += 0.2
+    if (this.up) this.accelerate(0.4)
+    if (this.left) this.a -= 0.16
+    if (this.right) this.a += 0.16
 
     // Joystick acceleration (continuous)
     if (this.joystickVector.dx !== 0 || this.joystickVector.dy !== 0) {
@@ -65,6 +61,12 @@ export class PlayerModel extends GameObject {
       this.a = Math.atan2(this.joystickVector.dy, this.joystickVector.dx)
     }
 
+    const limit = 8.6
+    if (this.dx > limit) this.dx = limit
+    if (this.dx < -limit) this.dx = -limit
+    if (this.dy > limit) this.dy = limit
+    if (this.dy < -limit) this.dy = -limit
+
     this.x += this.dx
     this.y += this.dy
   }
@@ -72,16 +74,6 @@ export class PlayerModel extends GameObject {
   accelerate(force) {
     this.dx += Math.cos(this.a) * force
     this.dy += Math.sin(this.a) * force
-
-    //Limit the speed
-    if (this.dx > 10) this.dx = 10
-    if (this.dx < -10) this.dx = -10
-    if (this.dy > 10) this.dy = 10
-    if (this.dy < -10) this.dy = -10
-
-    console.log(
-      `Accelerating with force: dx=${this.dx}, dy=${this.dy}, angle=${this.a}`
-    )
   }
 
   moveByJoystick({ dx, dy }) {
@@ -101,6 +93,7 @@ export class PlayerModel extends GameObject {
 
     this.dx = 0
     this.dy = 0
+    this.activePotions = {}
   }
 }
 
