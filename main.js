@@ -29,20 +29,20 @@ function startGame() {
   Multisynq.Session.join({
     appId: 'monanimals.party.prototype',
     apiKey: '2I1XIVkN7NBwSLPDZGQHsUVRQpmmOJuZCeHWujQJos',
-    name: 'public',
-    password: 'none',
+    name: Multisynq.App.autoSession(),
+    password: Multisynq.App.autoPassword(),
     model: GameModel,
     view: GameView,
   })
   Multisynq.App.makeWidgetDock()
 
   // Force scroll to top (fixes iOS Safari viewport bug)
-  window.scrollTo(0, 0);
+  window.scrollTo(0, 0)
 
   // Resize canvas to fit viewport
-  const canvas = document.getElementById('canvas');
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
+  const canvas = document.getElementById('game-canvas')
+  canvas.width = window.innerWidth
+  canvas.height = window.innerHeight
 }
 
 startBtn.onclick = startGame

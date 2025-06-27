@@ -21,7 +21,7 @@ body {
   align-items: center;
   height: 100vh;
 }
-canvas {
+#game-canvas {
   background: #000;
   object-fit: contain;
   width: 100vh;

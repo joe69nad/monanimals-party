@@ -257,6 +257,7 @@ GameModel.register('GameModel')
 export class GameView extends Multisynq.View {
   joystick = document.getElementById('joystick')
   knob = document.getElementById('knob')
+  canvas = document.getElementById('game-canvas')
 
   constructor(model) {
     super(model)
@@ -264,9 +265,9 @@ export class GameView extends Multisynq.View {
     this.smoothing = new WeakMap()
     this.prevLost = false
 
-    this.context = canvas.getContext('2d')
-    canvas.width = window.innerHeight
-    canvas.height = window.innerHeight
+    this.context = this.canvas.getContext('2d')
+    this.canvas.width = window.innerHeight
+    this.canvas.height = window.innerHeight
 
     // Load potion image once
     this.potionImg = new Image()
@@ -395,15 +396,15 @@ export class GameView extends Multisynq.View {
   update() {
     // Clear and set up scaling
     this.context.setTransform(1, 0, 0, 1, 0, 0) // Reset transform
-    this.context.clearRect(0, 0, canvas.width, canvas.height)
+    this.context.clearRect(0, 0, this.canvas.width, this.canvas.height)
 
-    // Calculate scale and offset to fit GAME_WIDTH × GAME_HEIGHT into canvas
+    // Calculate scale and offset to fit GAME_WIDTH × GAME_HEIGHT into this.canvas
     const scale = Math.min(
-      canvas.width / GAME_WIDTH,
-      canvas.height / GAME_HEIGHT
+      this.canvas.width / GAME_WIDTH,
+      this.canvas.height / GAME_HEIGHT
     )
-    const offsetX = (canvas.width - GAME_WIDTH * scale) / 2
-    const offsetY = (canvas.height - GAME_HEIGHT * scale) / 2
+    const offsetX = (this.canvas.width - GAME_WIDTH * scale) / 2
+    const offsetY = (this.canvas.height - GAME_HEIGHT * scale) / 2
 
     this.context.setTransform(scale, 0, 0, scale, offsetX, offsetY)
 
@@ -607,11 +608,11 @@ export class GameView extends Multisynq.View {
 
   virtualToScreen(x, y) {
     const scale = Math.min(
-      canvas.width / GAME_WIDTH,
-      canvas.height / GAME_HEIGHT
+      this.canvas.width / GAME_WIDTH,
+      this.canvas.height / GAME_HEIGHT
     )
-    const offsetX = (canvas.width - GAME_WIDTH * scale) / 2
-    const offsetY = (canvas.height - GAME_HEIGHT * scale) / 2
+    const offsetX = (this.canvas.width - GAME_WIDTH * scale) / 2
+    const offsetY = (this.canvas.height - GAME_HEIGHT * scale) / 2
     return {
       x: x * scale + offsetX,
       y: y * scale + offsetY,
